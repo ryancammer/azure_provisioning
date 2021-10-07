@@ -30,3 +30,4 @@ installer. These applications then work in conjunction to join the VM to the SHP
 - [ ] Switch from using a secret for the service principal that logs into 
   [Azure to a certificate](https://thecodeblogger.com/2020/06/20/service-principal-and-certificate-with-azure-key-vault/)
   [Azure Key Vault](https://azure.microsoft.com/en-us/services/key-vault/).
+- [ ] Get the latest stable version number of Powershell, and download that rather than a hard-coded version.  
