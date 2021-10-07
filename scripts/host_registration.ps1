@@ -32,6 +32,9 @@
     .PARAMETER HostPoolName
     This is the name of the session host pool that the VM will join.
 
+    .PARAMETER DeployAgentDownloadUrl
+    This script will download the DeployAgent archive from this url.
+
     .PARAMETER ReRegisterHost
     This switch will cause the VM to be re-registered, even if it has been
     previously registered. If the switch is present, the Registry key
@@ -53,6 +56,7 @@
     >> -SubscriptionId $SubscriptionId `
     >> -ResourceGroupName $ResourceGroupName `
     >> -HostPoolName $HostPoolName `
+    >> -DeployAgentDownloadUrl $DeployAgentDownloadUrl `
     >> -ReRegisterHost
 #>
 
@@ -74,6 +78,9 @@ param(
 
     [Parameter(Mandatory = $true)]
     [string] $HostPoolName,
+
+    [Parameter(Mandatory = $true)]
+    [string] $DeployAgentDownloadUrl,
 
     [Parameter(Mandatory = $false)]
     [switch] $ReRegisterHost
@@ -493,7 +500,7 @@ function Invoke-DeployAgent
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
         Write-EventToLog $LogFile "Info" "Invoke-DeployAgent" "Boot loader folder is $AgentBootServiceInstallerFolder"
-        $AgentBootServiceInstaller = (dir $AgentBootServiceInstallerFolder\ -Filter *.msi | Select-Object).FullName
+        $AgentBootServiceInstaller = (Get-ChildItem $AgentBootServiceInstallerFolder\ -Filter *.msi | Select-Object).FullName
         if ((-not$AgentBootServiceInstaller) -or (-not(Test-Path $AgentBootServiceInstaller)))
         {
             throw "RD Infra Agent Installer package is not found '$AgentBootServiceInstaller'"
@@ -501,7 +508,7 @@ function Invoke-DeployAgent
 
         # Convert relative paths to absolute paths if needed
         Write-EventToLog $LogFile "Info" "Invoke-DeployAgent" "Agent folder is $AgentInstallerFolder"
-        $AgentInstaller = (dir $AgentInstallerFolder\ -Filter *.msi | Select-Object).FullName
+        $AgentInstaller = (Get-ChildItem $AgentInstallerFolder\ -Filter *.msi | Select-Object).FullName
         if ((-not$AgentInstaller) -or (-not(Test-Path $AgentInstaller)))
         {
             throw "RD Infra Agent Installer package is not found '$AgentInstaller'"
@@ -509,14 +516,14 @@ function Invoke-DeployAgent
 
         # Convert relative paths to absolute paths if needed
         Write-EventToLog $LogFile "Info" "Invoke-DeployAgent" "SxS folder is $SxSStackInstallerFolder"
-        $SxSStackInstaller = (dir $SxSStackInstallerFolder\ -Filter *.msi | Select-Object).FullName
+        $SxSStackInstaller = (Get-ChildItem $SxSStackInstallerFolder\ -Filter *.msi | Select-Object).FullName
         if ((-not$SxSStackInstaller) -or (-not(Test-Path $SxSStackInstaller)))
         {
             throw "SxS Stack Installer package is not found '$SxSStackInstaller'"
         }
 
         Write-EventToLog $LogFile "Info" "Invoke-DeployAgent" "EnableSxSStackScript is $EnableSxSStackScriptFolder"
-        $EnableSxSStackScript = (dir $EnableSxSStackScriptFolder\ -Filter *.ps1 | Select-Object).FullName
+        $EnableSxSStackScript = (Get-ChildItem $EnableSxSStackScriptFolder\ -Filter *.ps1 | Select-Object).FullName
         if ((-not$EnableSxSStackScript) -or (-not(Test-Path $EnableSxSStackScript)))
         {
             throw "EnableSxSStack script is not found '$EnableSxSStackScript'"
@@ -652,7 +659,6 @@ function Write-EventToLog
 $StartTime = Get-Date -Format yyyyMMddTHHmmss
 $TempFolder = "C:\\temp"
 $LogFile = "$TempFolder\\host_registration-external-$StartTime" + ".log"
-$DeployAgentDownloadUrl = "https://github.com/ryancammer/azure_provisioning/blob/main/DeployAgent.zip?raw=true"
 $DeployAgentDownloadPath = "$TempFolder\\DeployAgent.zip"
 $DeployAgentDirectory = "$TempFolder\\DeployAgent"
 

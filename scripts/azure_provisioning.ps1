@@ -77,8 +77,10 @@ param (
     [string]$RegistrationScriptName,
 
     [Parameter(Mandatory = $true)]
-    [string]$RegistrationScriptDownloadUrl
+    [string]$RegistrationScriptDownloadUrl,
 
+    [Parameter(Mandatory = $true)]
+    [string]$DeployAgentDownloadUrl
 )
 
 function Initialize-TempFolder
@@ -495,4 +497,5 @@ Register-Host -ServicePrincipalApplicationId $ServicePrincipalApplicationId `
     -ResourceGroupName $ResourceGroupName `
     -HostPoolName $HostPoolName `
     -RegistrationScriptName $RegistrationScriptName `
-    -RegistrationScriptDownloadUrl $RegistrationScriptDownloadUrl
+    -RegistrationScriptDownloadUrl $RegistrationScriptDownloadUrl `
+    -DeployAgentDownloadUrl $DeployAgentDownloadUrl
