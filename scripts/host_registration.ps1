@@ -13,8 +13,11 @@
     Registration and a Service Principal. The script will use this service
     principal id to run Az module commands.
 
-    .PARAMETER ServicePrincipalApplicationSecret
-    This is the value of the Client Secret for the App Registration.
+    .PARAMETER CertName
+    This is the name of the service principal's certificate.
+
+    .PARAMETER KeyVaultName
+    This is the name of the vault that stores the service principal's cert.
 
     .PARAMETER TenantId
     This is the Tenant id for the Azure Active Directory that the resources
@@ -51,7 +54,8 @@
 
     .EXAMPLE
     PS> \host_registration.ps1 -ServicePrincipalApplicationId $ServicePrincipalApplicationId `
-    >> -ServicePrincipalApplicationSecret $ServicePrincipalApplicationSecret `
+    >> -CertName $CertName `
+    >> -KeyVaultName $KeyVaultName `
     >> -TenantId $TenantId `
     >> -SubscriptionId $SubscriptionId `
     >> -ResourceGroupName $ResourceGroupName `
@@ -62,10 +66,13 @@
 
 param(
     [Parameter(Mandatory = $true)]
-    [string] $ServicePrincipalApplicationId,
+    [string] $CertName,
 
     [Parameter(Mandatory = $true)]
-    [string] $ServicePrincipalApplicationSecret,
+    [string] $KeyVaultName,
+
+    [Parameter(Mandatory = $true)]
+    [string] $ServicePrincipalApplicationId,
 
     [Parameter(Mandatory = $true)]
     [string] $TenantId,
@@ -105,9 +112,6 @@ function Get-RegistrationToken
         in Azure Active Directory. There is a 1 to 1 correlation between an App
         Registration and a Service Principal.
 
-        .PARAMETER ServicePrincipalApplicationSecret
-        This is the value of the Client Secret for the App Registration.
-
         .PARAMETER TenantId
         This is the Tenant id for the Azure Active Directory that the resources
         such as the Virtual Machine, Service Principal, and Session Host Pool
@@ -140,7 +144,8 @@ function Get-RegistrationToken
 
         .EXAMPLE
         PS> \host_registration.ps1 -ServicePrincipalApplicationId $ServicePrincipalApplicationId `
-        >> -ServicePrincipalApplicationSecret $ServicePrincipalApplicationSecret `
+        >> -CertName $CertName
+        >> -KeyVaultName $KeyVaultName
         >> -TenantId $TenantId `
         >> -SubscriptionId $SubscriptionId `
         >> -ResourceGroupName $ResourceGroupName `
@@ -154,10 +159,13 @@ function Get-RegistrationToken
         [string] $LogFile,
 
         [Parameter(Mandatory = $true)]
-        [string] $ServicePrincipalApplicationId,
+        [string] $CertName,
 
-        [Parameter(mandatory = $true)]
-        [string]$ServicePrincipalApplicationSecret,
+        [Parameter(Mandatory = $true)]
+        [string] $KeyVaultName,
+
+        [Parameter(Mandatory = $true)]
+        [string] $ServicePrincipalApplicationId,
 
         [Parameter(mandatory = $true)]
         [string] $TenantId,
@@ -174,14 +182,16 @@ function Get-RegistrationToken
 
     Write-EventToLog $LogFile "Info" "Get-SessionHostToken" "Creating credentials:"
 
-    $SecureSecret = ConvertTo-SecureString $ServicePrincipalApplicationSecret -AsPlainText -Force
-
-    $Credential = New-Object System.Management.Automation.PSCredential($ServicePrincipalApplicationId, $SecureSecret)
-
     Write-EventToLog $LogFile "Info" "Get-SessionHostToken" "Credentials created. Connecting to Az account:"
 
-    Connect-AzAccount -ServicePrincipal -Credential $Credential -Tenant $TenantId -Subscription $SubscriptionId
+    Connect-AzAccount -Identity
 
+    $Cert = Get-AzKeyVaultCertificate -VaultName $KeyVaultName -Name $CertName
+
+    $Thumbprint = $Cert.Thumbprint
+
+    # TODO Eliminate the need for the service principal altogether
+    Connect-AzAccount -ServicePrincipal -ApplicationId $ServicePrincipalApplicationId -CertificateThumbprint $Thumbprint -Tenant $TenantId -Subscription $SubscriptionId
     Write-EventToLog $LogFile "Info" "Get-SessionHostToken" "Account connected. Creating new registration info: "
 
     $ExpirationInMinutes = 61
@@ -674,8 +684,9 @@ Get-ArchiveAndUnzip -LogFile $LogFile `
     -ExpandedArchiveDirectory $DeployAgentDirectory
 
 $GetRegistrationTokenReturn = Get-RegistrationToken -LogFile $LogFile `
+    -CertName $CertName `
+    -KeyVaultName $KeyVaultName `
     -ServicePrincipalApplicationId $ServicePrincipalApplicationId `
-    -ServicePrincipalApplicationSecret $ServicePrincipalApplicationSecret `
     -TenantId $TenantId `
     -SubscriptionId $SubscriptionId `
     -ResourceGroupName $ResourceGroupName `

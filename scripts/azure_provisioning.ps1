@@ -9,13 +9,17 @@
     Azure Virtual Desktop host session pool, which enables the host to be used for
     Virtual Desktop users.
 
+    .PARAMETER CertName
+    This is the name of the cert that belongs to the service principal that connects
+    to azure.
+
+    .PARAMETER KeyVaultName
+    This is the name of the key vault that stores the service principal's certificate.
+
     .PARAMETER ServicePrincipalApplicationId
     This is the service principal id, which corresponds to an App Registration
     in Azure Active Directory. There is a 1 to 1 correlation between an App
     Registration and a Service Principal.
-
-    .PARAMETER ServicePrincipalApplicationSecret
-    This is the value of the Client Secret for the App Registration.
 
     .PARAMETER TenantId
     This is the Tenant id for the Azure Active Directory that the resources
@@ -38,6 +42,10 @@
     .PARAMETER RegistrationScriptDownloadUrl
     This script downloads the registration script from this url.
 
+    .PARAMETER DeployAgentDownloadUrl
+    This script downloads the deployment agent that installs the executables
+    that join the host to the session host pool.
+
     .INPUTS
     None. You cannot pipe objects to Add-Extension.
 
@@ -46,20 +54,23 @@
 
     .EXAMPLE
     PS> \azure_provisioning.ps1 -ServicePrincipalApplicationId $ServicePrincipalApplicationId `
-    >> -ServicePrincipalApplicationSecret $ServicePrincipalApplicationSecret `
     >> -TenantId $TenantId `
     >> -SubscriptionId $SubscriptionId `
     >> -ResourceGroupName $ResourceGroupName `
     >> -HostPoolName $HostPoolName `
-    >> -RegistrationScriptName $RegistrationScriptName
-    >> -RegistrationScriptDownloadUrl $RegistrationScriptDownloadUrl
+    >> -RegistrationScriptName $RegistrationScriptName `
+    >> -RegistrationScriptDownloadUrl $RegistrationScriptDownloadUrl `
+    >> -DeployAgentDownloadUrl $DeployAgentDownloadUrl
 #>
 param (
     [Parameter(Mandatory = $true)]
-    [string]$ServicePrincipalApplicationId,
+    [string]$CertName,
 
     [Parameter(Mandatory = $true)]
-    [string]$ServicePrincipalApplicationSecret,
+    [string]$KeyVaultName,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ServicePrincipalApplicationId,
 
     [Parameter(Mandatory = $true)]
     [string]$TenantId,
@@ -170,6 +181,13 @@ function Invoke-HostRegistration
         .PARAMETER LogFile
         This function will log its operations to this file.
 
+        .PARAMETER CertName
+        This is the name of the cert that belongs to the service principal that connects
+        to azure.
+
+        .PARAMETER KeyVaultName
+        This is the name of the key vault that stores the service principal's certificate.
+
         .PARAMETER RegistrationScript
         This function executes this registration script with Powershell 7.
 
@@ -177,9 +195,6 @@ function Invoke-HostRegistration
         This is the service principal id, which corresponds to an App Registration
         in Azure Active Directory. There is a 1 to 1 correlation between an App
         Registration and a Service Principal.
-
-        .PARAMETER ServicePrincipalApplicationSecret
-        This is the value of the Client Secret for the App Registration.
 
         .PARAMETER TenantId
         This is the Tenant id for the Azure Active Directory that the resources
@@ -197,6 +212,9 @@ function Invoke-HostRegistration
         .PARAMETER HostPoolName
         This is the name of the session host pool that the VM will join.
 
+        .PARAMETER DeployAgentDownloadUrl
+        This is the url the script will download the deploy agent from.
+
         .INPUTS
         None. You cannot pipe objects to Add-Extension.
 
@@ -210,13 +228,16 @@ function Invoke-HostRegistration
         [string] $LogFile,
 
         [Parameter(Mandatory = $true)]
+        [string] $CertName,
+
+        [Parameter(Mandatory = $true)]
+        [string] $KeyVaultName,
+
+        [Parameter(Mandatory = $true)]
         [string] $RegistrationScript,
 
         [Parameter(Mandatory = $true)]
         [string] $ServicePrincipalApplicationId,
-
-        [Parameter(Mandatory = $true)]
-        [string] $ServicePrincipalApplicationSecret,
 
         [Parameter(Mandatory = $true)]
         [string] $TenantId,
@@ -228,7 +249,10 @@ function Invoke-HostRegistration
         [string] $ResourceGroupName,
 
         [Parameter(Mandatory = $true)]
-        [string] $HostPoolName
+        [string] $HostPoolName,
+
+        [Parameter(Mandatory = $true)]
+        [string] $DeployAgentDownloadUrl
     )
 
     $PwshProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
@@ -237,22 +261,21 @@ function Invoke-HostRegistration
     $PwshProcessInfo.RedirectStandardOutput = $true
     $PwshProcessInfo.UseShellExecute = $false
 
-    # TODO: strip out sensitive parameters after getting command to work
-    Write-EventToLog $LogFile "Powershell 7 command: Start-Process C:\\Program Files\\PowerShell\\7\\pwsh.exe -ExecutionPolicy Unrestricted -exec bypass -File $RegistrationScript -ServicePrincipalApplicationId $ServicePrincipalApplicationId -ServicePrincipalApplicationSecret $ServicePrincipalApplicationSecret -Tenant $Tenant -Subscription $Subscription -ResourceGroupName $ResourceGroupName -HostPoolName $HostPoolName'"
+    Write-EventToLog $LogFile "Info" "Invoke-HostRegistration" "Powershell 7 command: Start-Process C:\\Program Files\\PowerShell\\7\\pwsh.exe -ExecutionPolicy Unrestricted -exec bypass -File $RegistrationScript -CertName $CertName -DeployAgentDownloadUrl $DeployAgentDownloadUrl -KeyVaultName $KeyVaultName -ServicePrincipalApplicationId $ServicePrincipalApplicationId -TenantId $TenantId -SubscriptionId $SubscriptionId -ResourceGroupName $ResourceGroupName -HostPoolName $HostPoolName'"
 
-    $PwshProcessInfo.Arguments = "-ExecutionPolicy Unrestricted -exec bypass -File $RegistrationScript -ServicePrincipalApplicationId $ServicePrincipalApplicationId -ServicePrincipalApplicationSecret $ServicePrincipalApplicationSecret -TenantId $TenantId -Subscription $Subscription -ResourceGroupName $ResourceGroupName -HostPoolName $HostPoolName'"
+    $PwshProcessInfo.Arguments = "-ExecutionPolicy Unrestricted -exec bypass -File $RegistrationScript -CertName $CertName -DeployAgentDownloadUrl $DeployAgentDownloadUrl -KeyVaultName $KeyVaultName -ServicePrincipalApplicationId $ServicePrincipalApplicationId -TenantId $TenantId -SubscriptionId $SubscriptionId -ResourceGroupName $ResourceGroupName -HostPoolName $HostPoolName'"
 
     $InstallationProcess = New-Object System.Diagnostics.Process
     $InstallationProcess.StartInfo = $PwshProcessInfo
-    Write-EventToLog $LogFile "Starting the pwsh process now on script $RegistrationScript"
+    Write-EventToLog $LogFile "Info" "Invoke-HostRegistration" "Starting the pwsh process now on script $RegistrationScript"
     $InstallationProcess.Start() | Out-Null
     $InstallationProcess.WaitForExit()
 
     $stdout = $InstallationProcess.StandardOutput.ReadToEnd()
     $stderr = $InstallationProcess.StandardError.ReadToEnd()
 
-    Write-EventToLog $LogFile "stdout: $stdout"
-    Write-EventToLog $LogFile "stderr: $stderr"
+    Write-EventToLog $LogFile "Info" "Invoke-HostRegistration" "stdout: $stdout"
+    Write-EventToLog $LogFile "Error" "Invoke-HostRegistration" "stderr: $stderr"
 }
 
 function Invoke-PowershellInstallProcess
@@ -282,14 +305,14 @@ function Invoke-PowershellInstallProcess
 
     [CmdletBinding()]
     param (
-        [string]$PowershellExecutablePath,
         [string]$LogFile,
+        [string]$PowershellExecutablePath,
         [string]$MsiExecLogPath
     )
 
     $PowershellCommand = "Start-Process msiexec.exe -Wait -ArgumentList '/I $PowershellExecutablePath /quiet ADD_EXPLORER_CONTEXT_MENU_OPENPOWERSHELL=1 ENABLE_PSREMOTING=1 REGISTER_MANIFEST=1'"
 
-    Write-EventToLog $LogFile "The equivalent powershell command is $PowershellCommand"
+    Write-EventToLog $LogFile "Info" "Invoke-PowershellInstallProcess" "The equivalent powershell command is $PowershellCommand"
 
     $MsiExecProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
     $MsiExecProcessInfo.FileName = "msiexec.exe"
@@ -307,8 +330,8 @@ function Invoke-PowershellInstallProcess
     $stdout = $InstallationProcess.StandardOutput.ReadToEnd()
     $stderr = $InstallationProcess.StandardError.ReadToEnd()
 
-    Write-EventToLog $LogFile "stdout: $stdout"
-    Write-EventToLog $LogFile "stderr: $stderr"
+    Write-EventToLog $LogFile "Info" "Invoke-PowershellInstallProcess" "stdout: $stdout"
+    Write-EventToLog $LogFile "Error" "Invoke-PowershellInstallProcess" "stderr: $stderr"
 }
 
 function Register-Host
@@ -324,13 +347,17 @@ function Register-Host
         Azure Virtual Desktop host session pool, which enables the host to be used for
         Virtual Desktop users.
 
+        .PARAMETER CertName
+        This is the name of the cert that belongs to the service principal that connects
+        to azure.
+
+        .PARAMETER KeyVaultName
+        This is the name of the key vault that stores the service principal's certificate.
+
         .PARAMETER ServicePrincipalApplicationId
         This is the service principal id, which corresponds to an App Registration
         in Azure Active Directory. There is a 1 to 1 correlation between an App
         Registration and a Service Principal.
-
-        .PARAMETER ServicePrincipalApplicationSecret
-        This is the value of the Client Secret for the App Registration.
 
         .PARAMETER TenantId
         This is the Tenant id for the Azure Active Directory that the resources
@@ -341,12 +368,22 @@ function Register-Host
         This is the Azure Subscription Id for all of the resources used in this
         script.
 
+        .PARAMETER RegistrationScriptDownloadUrl
+        This script downloads the registration script from this url.
+
         .PARAMETER ResourceGroupName
         This is the name of the Resource Group that the resources used in this
         script.
 
         .PARAMETER HostPoolName
         This is the name of the session host pool that the VM will join.
+
+         .PARAMETER RegistrationScriptName
+        This is the name of the registration script that this script calls.
+
+        .PARAMETER DeployAgentDownloadUrl
+        This script downloads the deployment agent that installs the executables
+        that join the host to the session host pool.
 
         .INPUTS
         None. You cannot pipe objects to Add-Extension.
@@ -357,22 +394,34 @@ function Register-Host
 
     param (
         [Parameter(Mandatory = $true)]
-        [string] $ServicePrincipalApplicationId,
+        [string]$CertName,
 
         [Parameter(Mandatory = $true)]
-        [string] $ServicePrincipalApplicationSecret,
+        [string]$KeyVaultName,
+
+        [Parameter(Mandatory = $true)]
+        [string] $ServicePrincipalApplicationId,
 
         [Parameter(Mandatory = $true)]
         [string] $TenantId,
 
         [Parameter(Mandatory = $true)]
-        [string] $Subscription,
+        [string] $SubscriptionId,
 
         [Parameter(Mandatory = $true)]
         [string] $ResourceGroupName,
 
         [Parameter(Mandatory = $true)]
-        [string] $HostPoolName
+        [string] $HostPoolName,
+
+        [Parameter(Mandatory = $true)]
+        [string] $RegistrationScriptName,
+
+        [Parameter(Mandatory = $true)]
+        [string] $RegistrationScriptDownloadUrl,
+
+        [Parameter(Mandatory = $true)]
+        [string] $DeployAgentDownloadUrl
     )
 
     $StartTime = Get-Date -Format yyyyMMddTHHmmss
@@ -387,7 +436,7 @@ function Register-Host
 
     $LogFile = "$TempFolder\\azure_provisioning-$StartTime" + ".log"
 
-    Write-EventToLog "Info" "Register-Host" $LogFile "Temp folder initialized."
+    Write-EventToLog $LogFile "Info" "Register-Host" "Temp folder initialized."
 
     try
     {
@@ -410,7 +459,7 @@ function Register-Host
 
         Write-EventToLog $LogFile "Info" "Register-Host" "Installing Powershell..."
 
-        Invoke-PowershellInstallProcess $PowershellExecutablePath $LogFile $MsiLogPath
+        Invoke-PowershellInstallProcess $LogFile $PowershellExecutablePath $MsiLogPath
 
         Write-EventToLog $LogFile "Info" "Register-Host" "Powershell installed. Downloading registration script..."
 
@@ -421,13 +470,15 @@ function Register-Host
         Write-EventToLog $LogFile "Info" "Register-Host" "Executing registration script..."
 
         Invoke-HostRegistration -LogFile $LogFile `
-            -RegistrationScript $RegistrationScript `
+            -RegistrationScript $RegistrationScriptPath `
+            -CertName $CertName `
+            -KeyVaultName $KeyVaultName `
             -ServicePrincipalApplicationId $ServicePrincipalApplicationId `
-            -ServicePrincipalApplicationSecret $ServicePrincipalApplicationSecret `
             -TenantId $TenantId `
             -SubscriptionId $SubscriptionId `
             -ResourceGroupName $ResourceGroupName `
-            -RegistrationScriptPath $RegistrationScriptPath
+            -HostPoolName $HostPoolName `
+            -DeployAgentDownloadUrl $DeployAgentDownloadUrl
 
         Write-EventToLog $LogFile "Info" "Register-Host" "Registration script execution complete."
     }
@@ -490,8 +541,9 @@ function Write-EventToLog
     $Stream.Close()
 }
 
-Register-Host -ServicePrincipalApplicationId $ServicePrincipalApplicationId `
-    -ServicePrincipalApplicationSecret $ServicePrincipalApplicationSecret `
+Register-Host -CertName $CertName `
+    -KeyVaultName $KeyVaultName `
+    -ServicePrincipalApplicationId $ServicePrincipalApplicationId `
     -TenantId $TenantId `
     -SubscriptionId $SubscriptionId `
     -ResourceGroupName $ResourceGroupName `
