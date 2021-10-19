@@ -38,6 +38,9 @@
     .PARAMETER DeployAgentDownloadUrl
     This script will download the DeployAgent archive from this url.
 
+    .PARAMETER $AzArchiveDownloadUrl
+    This function downloads the Az cmdlets archive file from this url.
+
     .PARAMETER ReRegisterHost
     This switch will cause the VM to be re-registered, even if it has been
     previously registered. If the switch is present, the Registry key
@@ -61,6 +64,7 @@
     >> -ResourceGroupName $ResourceGroupName `
     >> -HostPoolName $HostPoolName `
     >> -DeployAgentDownloadUrl $DeployAgentDownloadUrl `
+    >> -AzArchiveDownloadUrl $AzArchiveDownloadUrl `
     >> -ReRegisterHost
 #>
 
@@ -88,6 +92,9 @@ param(
 
     [Parameter(Mandatory = $true)]
     [string] $DeployAgentDownloadUrl,
+
+    [Parameter(Mandatory = $true)]
+    [string] $AzArchiveDownloadUrl,
 
     [Parameter(Mandatory = $false)]
     [switch] $ReRegisterHost
@@ -191,7 +198,7 @@ function Get-RegistrationToken
     $Thumbprint = $Cert.Thumbprint
 
     # TODO Eliminate the need for the service principal altogether
-    Connect-AzAccount -ServicePrincipal -ApplicationId $ServicePrincipalApplicationId -CertificateThumbprint $Thumbprint -Tenant $TenantId -Subscription $SubscriptionId
+    #Connect-AzAccount -ServicePrincipal -ApplicationId $ServicePrincipalApplicationId -CertificateThumbprint $Thumbprint -Tenant $TenantId -Subscription $SubscriptionId
     Write-EventToLog $LogFile "Info" "Get-SessionHostToken" "Account connected. Creating new registration info: "
 
     $ExpirationInMinutes = 61
@@ -245,7 +252,7 @@ function Invoke-RegistryProvisioning
     )
 
     $InitializationMessage = "Handle-RegistryProvisioning called with the following arguments: " +
-        "LogFile: $LogFile, ReRegisterHost: $ReRegisterHost"
+            "LogFile: $LogFile, ReRegisterHost: $ReRegisterHost"
 
     Write-EventToLog $LogFile "Info" "Handle-RegistryProvisioning" $InitializationMessage
 
@@ -392,7 +399,16 @@ function Install-AzModule
         this script. This function installs the Az module.
 
         .PARAMETER LogFile
-        This function will log its operations to this file.
+        This function logs its operations to this file.
+
+        .PARAMETER $AzArchiveDownloadUrl
+        This function downloads the Az cmdlets archive file from this url.
+
+        .PARAMETER $AzArchiveDownloadPath
+        This function downloads the Az cmdlets archive file to this path.
+
+        .PARAMETER $AzArchiveDirectory
+        This function will expand the Az cmdlets archive to this directory.
 
         .INPUTS
         None. You cannot pipe objects to Add-Extension.
@@ -404,12 +420,48 @@ function Install-AzModule
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
-        [string] $LogFile
+        [string] $LogFile,
+
+        [Parameter(Mandatory = $true)]
+        [string] $AzArchiveDownloadUrl,
+
+        [Parameter(Mandatory = $true)]
+        [string] $AzArchiveDownloadPath,
+
+        [Parameter(Mandatory = $true)]
+        [string] $AzArchiveDirectory
     )
 
-    Write-EventToLog $LogFile "Info" "Install-AzModule" "Installing Az module:"
+    Write-EventToLog $LogFile "Info" "Install-AzModule" "Download Az module:"
 
-    Install-Module -Name Az -Force
+    Get-ArchiveAndUnzip -LogFile $LogFile `
+    -DownloadUrl $AzArchiveDownloadUrl `
+    -DownloadPath $AzArchiveDownloadPath `
+    -ExpandedArchiveDirectory $AzArchiveDirectory
+
+    $PwshProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $PwshProcessInfo.FileName = "C:\\Program Files\\PowerShell\\7\\pwsh.exe"
+    $PwshProcessInfo.RedirectStandardError = $true
+    $PwshProcessInfo.RedirectStandardOutput = $true
+    $PwshProcessInfo.UseShellExecute = $false
+
+    $AzInstallScript = "$AzArchiveDirectory\\InstallModule.ps1"
+
+    Write-EventToLog $LogFile "Info" "Install-AzModule" "Install-AzModule command: Start-Process C:\\Program Files\\PowerShell\\7\\pwsh.exe -ExecutionPolicy Unrestricted -exec bypass -File $AzInstallScript"
+
+    $PwshProcessInfo.Arguments = "-ExecutionPolicy Unrestricted -exec bypass -File $AzInstallScript"
+
+    $InstallationProcess = New-Object System.Diagnostics.Process
+    $InstallationProcess.StartInfo = $PwshProcessInfo
+    Write-EventToLog $LogFile "Info" "Install-AzModule" "Starting the pwsh process now on script $AzInstallScript"
+    $InstallationProcess.Start() | Out-Null
+    $InstallationProcess.WaitForExit()
+
+    $stdout = $InstallationProcess.StandardOutput.ReadToEnd()
+    $stderr = $InstallationProcess.StandardError.ReadToEnd()
+
+    Write-EventToLog $LogFile "Info" "Invoke-HostRegistration" "stdout: $stdout"
+    Write-EventToLog $LogFile "Error" "Invoke-HostRegistration" "stderr: $stderr"
 
     Write-EventToLog $LogFile "Info" "Install-AzModule" "Az module installed."
 }
@@ -664,43 +716,60 @@ function Write-EventToLog
 # Perform Registration
 ###############################################################################
 
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+try
+{
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-$StartTime = Get-Date -Format yyyyMMddTHHmmss
-$TempFolder = "C:\\temp"
-$LogFile = "$TempFolder\\host_registration-external-$StartTime" + ".log"
-$DeployAgentDownloadPath = "$TempFolder\\DeployAgent.zip"
-$DeployAgentDirectory = "$TempFolder\\DeployAgent"
+    $StartTime = Get-Date -Format yyyyMMddTHHmmss
+    $TempFolder = "C:\\temp"
+    $LogFile = "$TempFolder\\host_registration-external-$StartTime" + ".log"
+    $DeployAgentDownloadPath = "$TempFolder\\DeployAgent.zip"
+    $DeployAgentDirectory = "$TempFolder\\DeployAgent"
 
-Initialize-TempFolder $TempFolder
+    Initialize-TempFolder $TempFolder
 
-Invoke-RegistryProvisioning -LogFile $LogFile -ReRegisterHost $ReRegisterHost.ToBool()
+    Invoke-RegistryProvisioning -LogFile $LogFile -ReRegisterHost $ReRegisterHost.ToBool()
 
-Install-AzModule -LogFile $LogFile
+    $AzArchiveName = Split-Path $AzArchiveDownloadUrl -leaf
+    $AzArchiveName = $AzArchiveName.Replace("?raw=true", "")
+    $AzArchiveDirectoryName = $AzArchiveName.Replace(".zip", "")
 
-Get-ArchiveAndUnzip -LogFile $LogFile `
-    -DownloadUrl $DeployAgentDownloadUrl `
-    -DownloadPath $DeployAgentDownloadPath `
-    -ExpandedArchiveDirectory $DeployAgentDirectory
+    $AzArchiveDownloadPath = "$TempFolder\\$AzArchiveName"
+    $AzArchiveDirectory = "$TempFolder\\$AzArchiveDirectoryName"
 
-$GetRegistrationTokenReturn = Get-RegistrationToken -LogFile $LogFile `
-    -CertName $CertName `
-    -KeyVaultName $KeyVaultName `
-    -ServicePrincipalApplicationId $ServicePrincipalApplicationId `
-    -TenantId $TenantId `
-    -SubscriptionId $SubscriptionId `
-    -ResourceGroupName $ResourceGroupName `
-    -HostPoolName $HostPoolName
+    Install-AzModule -LogFile $LogFile `
+        -AzArchiveDownloadUrl $AzArchiveDownloadUrl `
+        -AzArchiveDownloadPath $AzArchiveDownloadPath `
+        -AzArchiveDirectory $AzArchiveDirectory
 
-$RegistrationToken = $GetRegistrationTokenReturn[$GetRegistrationTokenReturn.Length - 1]
+    Get-ArchiveAndUnzip -LogFile $LogFile `
+        -DownloadUrl $DeployAgentDownloadUrl `
+        -DownloadPath $DeployAgentDownloadPath `
+        -ExpandedArchiveDirectory $DeployAgentDirectory
 
-Invoke-DeployAgent -LogFile $LogFile `
-    -LogDirectory $TempFolder `
-    -AgentBootServiceInstallerFolder "$DeployAgentDirectory\\RDAgentBootLoaderInstall" `
-    -AgentInstallerFolder "$DeployAgentDirectory\\RDInfraAgentInstall" `
-    -SxSStackInstallerFolder "$DeployAgentDirectory\\RDInfraSxSStackInstall" `
-    -EnableSxSStackScriptFolder "$DeployAgentDirectory\\EnableSxSStackScript" `
-    -RegistrationToken $RegistrationToken `
-    -StartAgent $true `
-    -rdshIs1809OrLater $true
+    $GetRegistrationTokenReturn = Get-RegistrationToken -LogFile $LogFile `
+        -CertName $CertName `
+        -KeyVaultName $KeyVaultName `
+        -ServicePrincipalApplicationId $ServicePrincipalApplicationId `
+        -TenantId $TenantId `
+        -SubscriptionId $SubscriptionId `
+        -ResourceGroupName $ResourceGroupName `
+        -HostPoolName $HostPoolName
 
+    $RegistrationToken = $GetRegistrationTokenReturn[$GetRegistrationTokenReturn.Length - 1]
+
+    Invoke-DeployAgent -LogFile $LogFile `
+        -LogDirectory $TempFolder `
+        -AgentBootServiceInstallerFolder "$DeployAgentDirectory\\RDAgentBootLoaderInstall" `
+        -AgentInstallerFolder "$DeployAgentDirectory\\RDInfraAgentInstall" `
+        -SxSStackInstallerFolder "$DeployAgentDirectory\\RDInfraSxSStackInstall" `
+        -EnableSxSStackScriptFolder "$DeployAgentDirectory\\EnableSxSStackScript" `
+        -RegistrationToken $RegistrationToken `
+        -StartAgent $true `
+        -rdshIs1809OrLater $true
+}
+catch
+{
+    $StackTrace = $_.ScriptStackTrace
+    Write-EventToLog $LogFile "Error" "Main" "An error occurred. Error: $_. Stack trace: $StackTrace"
+}

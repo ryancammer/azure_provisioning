@@ -46,6 +46,9 @@
     This script downloads the deployment agent that installs the executables
     that join the host to the session host pool.
 
+    .PARAMETER $AzArchiveDownloadUrl
+    This function downloads the Az cmdlets archive file from this url.
+
     .INPUTS
     None. You cannot pipe objects to Add-Extension.
 
@@ -60,7 +63,8 @@
     >> -HostPoolName $HostPoolName `
     >> -RegistrationScriptName $RegistrationScriptName `
     >> -RegistrationScriptDownloadUrl $RegistrationScriptDownloadUrl `
-    >> -DeployAgentDownloadUrl $DeployAgentDownloadUrl
+    >> -DeployAgentDownloadUrl $DeployAgentDownloadUrl `
+    >> -AzArchiveDownloadUrl $AzArchiveDownloadUrl
 #>
 param (
     [Parameter(Mandatory = $true)]
@@ -91,7 +95,10 @@ param (
     [string]$RegistrationScriptDownloadUrl,
 
     [Parameter(Mandatory = $true)]
-    [string]$DeployAgentDownloadUrl
+    [string]$DeployAgentDownloadUrl,
+
+    [Parameter(Mandatory = $true)]
+    [string] $AzArchiveDownloadUrl
 )
 
 function Initialize-TempFolder
@@ -215,6 +222,9 @@ function Invoke-HostRegistration
         .PARAMETER DeployAgentDownloadUrl
         This is the url the script will download the deploy agent from.
 
+        .PARAMETER $AzArchiveDownloadUrl
+        This function downloads the Az cmdlets archive file from this url.
+
         .INPUTS
         None. You cannot pipe objects to Add-Extension.
 
@@ -252,7 +262,10 @@ function Invoke-HostRegistration
         [string] $HostPoolName,
 
         [Parameter(Mandatory = $true)]
-        [string] $DeployAgentDownloadUrl
+        [string] $DeployAgentDownloadUrl,
+
+        [Parameter(Mandatory = $true)]
+        [string] $AzArchiveDownloadUrl
     )
 
     $PwshProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
@@ -261,9 +274,9 @@ function Invoke-HostRegistration
     $PwshProcessInfo.RedirectStandardOutput = $true
     $PwshProcessInfo.UseShellExecute = $false
 
-    Write-EventToLog $LogFile "Info" "Invoke-HostRegistration" "Powershell 7 command: Start-Process C:\\Program Files\\PowerShell\\7\\pwsh.exe -ExecutionPolicy Unrestricted -exec bypass -File $RegistrationScript -CertName $CertName -DeployAgentDownloadUrl $DeployAgentDownloadUrl -KeyVaultName $KeyVaultName -ServicePrincipalApplicationId $ServicePrincipalApplicationId -TenantId $TenantId -SubscriptionId $SubscriptionId -ResourceGroupName $ResourceGroupName -HostPoolName $HostPoolName'"
+    Write-EventToLog $LogFile "Info" "Invoke-HostRegistration" "Powershell 7 command: Start-Process C:\\Program Files\\PowerShell\\7\\pwsh.exe -ExecutionPolicy Unrestricted -exec bypass -File $RegistrationScript -CertName $CertName -AzArchiveDownloadUrl $AzArchiveDownloadUrl -DeployAgentDownloadUrl $DeployAgentDownloadUrl -KeyVaultName $KeyVaultName -ServicePrincipalApplicationId $ServicePrincipalApplicationId -TenantId $TenantId -SubscriptionId $SubscriptionId -ResourceGroupName $ResourceGroupName -HostPoolName $HostPoolName'"
 
-    $PwshProcessInfo.Arguments = "-ExecutionPolicy Unrestricted -exec bypass -File $RegistrationScript -CertName $CertName -DeployAgentDownloadUrl $DeployAgentDownloadUrl -KeyVaultName $KeyVaultName -ServicePrincipalApplicationId $ServicePrincipalApplicationId -TenantId $TenantId -SubscriptionId $SubscriptionId -ResourceGroupName $ResourceGroupName -HostPoolName $HostPoolName'"
+    $PwshProcessInfo.Arguments = "-ExecutionPolicy Unrestricted -exec bypass -File $RegistrationScript -CertName $CertName -AzArchiveDownloadUrl $AzArchiveDownloadUrl -DeployAgentDownloadUrl $DeployAgentDownloadUrl -KeyVaultName $KeyVaultName -ServicePrincipalApplicationId $ServicePrincipalApplicationId -TenantId $TenantId -SubscriptionId $SubscriptionId -ResourceGroupName $ResourceGroupName -HostPoolName $HostPoolName'"
 
     $InstallationProcess = New-Object System.Diagnostics.Process
     $InstallationProcess.StartInfo = $PwshProcessInfo
@@ -385,6 +398,9 @@ function Register-Host
         This script downloads the deployment agent that installs the executables
         that join the host to the session host pool.
 
+        .PARAMETER $AzArchiveDownloadUrl
+        This function downloads the Az cmdlets archive file from this url.
+
         .INPUTS
         None. You cannot pipe objects to Add-Extension.
 
@@ -421,12 +437,15 @@ function Register-Host
         [string] $RegistrationScriptDownloadUrl,
 
         [Parameter(Mandatory = $true)]
-        [string] $DeployAgentDownloadUrl
+        [string] $DeployAgentDownloadUrl,
+
+        [Parameter(Mandatory = $true)]
+        [string] $AzArchiveDownloadUrl
     )
 
     $StartTime = Get-Date -Format yyyyMMddTHHmmss
 
-    $PowershellVersion = "7.1.4"
+    $PowershellVersion = "7.1.5"
     $PowershellInstallExecutable = "PowerShell-$PowershellVersion-win-x64.msi"
     $TempFolder = "C:\\temp"
     $PowershellExecutablePath = "$TempFolder\\$PowershellInstallExecutable"
@@ -478,7 +497,8 @@ function Register-Host
             -SubscriptionId $SubscriptionId `
             -ResourceGroupName $ResourceGroupName `
             -HostPoolName $HostPoolName `
-            -DeployAgentDownloadUrl $DeployAgentDownloadUrl
+            -DeployAgentDownloadUrl $DeployAgentDownloadUrl `
+            -AzArchiveDownloadUrl $AzArchiveDownloadUrl
 
         Write-EventToLog $LogFile "Info" "Register-Host" "Registration script execution complete."
     }
@@ -550,4 +570,5 @@ Register-Host -CertName $CertName `
     -HostPoolName $HostPoolName `
     -RegistrationScriptName $RegistrationScriptName `
     -RegistrationScriptDownloadUrl $RegistrationScriptDownloadUrl `
-    -DeployAgentDownloadUrl $DeployAgentDownloadUrl
+    -DeployAgentDownloadUrl $DeployAgentDownloadUrl `
+    -AzArchiveDownloadUrl $AzArchiveDownloadUrl
