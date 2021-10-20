@@ -7,21 +7,9 @@
     session host. It does this by generating a session host registration
     token from a host pool, and then using that token to join the host pool.
 
-    .PARAMETER ServicePrincipalApplicationId
-    This is the service principal id, which corresponds to an App Registration
-    in Azure Active Directory. There is a 1 to 1 correlation between an App
-    Registration and a Service Principal. The script will use this service
-    principal id to run Az module commands.
-
-    .PARAMETER CertName
-    This is the name of the service principal's certificate.
-
-    .PARAMETER KeyVaultName
-    This is the name of the vault that stores the service principal's cert.
-
     .PARAMETER TenantId
     This is the Tenant id for the Azure Active Directory that the resources
-    such as the Virtual Machine, Service Principal, and Session Host Pool
+    such as the Virtual Machine, and Session Host Pool
     belong to.
 
     .PARAMETER SubscriptionId
@@ -56,10 +44,7 @@
     None.
 
     .EXAMPLE
-    PS> \host_registration.ps1 -ServicePrincipalApplicationId $ServicePrincipalApplicationId `
-    >> -CertName $CertName `
-    >> -KeyVaultName $KeyVaultName `
-    >> -TenantId $TenantId `
+    PS> \host_registration.ps1 -TenantId $TenantId `
     >> -SubscriptionId $SubscriptionId `
     >> -ResourceGroupName $ResourceGroupName `
     >> -HostPoolName $HostPoolName `
@@ -69,15 +54,6 @@
 #>
 
 param(
-    [Parameter(Mandatory = $true)]
-    [string] $CertName,
-
-    [Parameter(Mandatory = $true)]
-    [string] $KeyVaultName,
-
-    [Parameter(Mandatory = $true)]
-    [string] $ServicePrincipalApplicationId,
-
     [Parameter(Mandatory = $true)]
     [string] $TenantId,
 
@@ -107,21 +83,16 @@ function Get-RegistrationToken
         Gets a registration token so that a Virtual Machine may join a session host pool.
 
         .DESCRIPTION
-        The Get-RegistrationToken function uses a service principal in order
+        The Get-RegistrationToken function uses the local VM's service principal in order
         to fetch a host pool session registration token from a host pool, which
         a virtual machine can then use to join the host pool.
 
         .PARAMETER LogFile
         This function will log its operations to this file.
 
-        .PARAMETER ServicePrincipalApplicationId
-        This is the service principal id, which corresponds to an App Registration
-        in Azure Active Directory. There is a 1 to 1 correlation between an App
-        Registration and a Service Principal.
-
         .PARAMETER TenantId
         This is the Tenant id for the Azure Active Directory that the resources
-        such as the Virtual Machine, Service Principal, and Session Host Pool
+        such as the Virtual Machine, and Session Host Pool
         belong to.
 
         .PARAMETER SubscriptionId
@@ -150,10 +121,7 @@ function Get-RegistrationToken
         None.
 
         .EXAMPLE
-        PS> \host_registration.ps1 -ServicePrincipalApplicationId $ServicePrincipalApplicationId `
-        >> -CertName $CertName
-        >> -KeyVaultName $KeyVaultName
-        >> -TenantId $TenantId `
+        PS> \host_registration.ps1 -TenantId $TenantId `
         >> -SubscriptionId $SubscriptionId `
         >> -ResourceGroupName $ResourceGroupName `
         >> -HostPoolName $HostPoolName `
@@ -164,15 +132,6 @@ function Get-RegistrationToken
     param(
         [Parameter(Mandatory = $true)]
         [string] $LogFile,
-
-        [Parameter(Mandatory = $true)]
-        [string] $CertName,
-
-        [Parameter(Mandatory = $true)]
-        [string] $KeyVaultName,
-
-        [Parameter(Mandatory = $true)]
-        [string] $ServicePrincipalApplicationId,
 
         [Parameter(mandatory = $true)]
         [string] $TenantId,
@@ -187,18 +146,10 @@ function Get-RegistrationToken
         [string] $HostPoolName
     )
 
-    Write-EventToLog $LogFile "Info" "Get-SessionHostToken" "Creating credentials:"
-
-    Write-EventToLog $LogFile "Info" "Get-SessionHostToken" "Credentials created. Connecting to Az account:"
+    Write-EventToLog $LogFile "Info" "Get-SessionHostToken" "Connecting to Az account:"
 
     Connect-AzAccount -Identity
 
-    $Cert = Get-AzKeyVaultCertificate -VaultName $KeyVaultName -Name $CertName
-
-    $Thumbprint = $Cert.Thumbprint
-
-    # TODO Eliminate the need for the service principal altogether
-    #Connect-AzAccount -ServicePrincipal -ApplicationId $ServicePrincipalApplicationId -CertificateThumbprint $Thumbprint -Tenant $TenantId -Subscription $SubscriptionId
     Write-EventToLog $LogFile "Info" "Get-SessionHostToken" "Account connected. Creating new registration info: "
 
     $ExpirationInMinutes = 61
@@ -748,9 +699,6 @@ try
         -ExpandedArchiveDirectory $DeployAgentDirectory
 
     $GetRegistrationTokenReturn = Get-RegistrationToken -LogFile $LogFile `
-        -CertName $CertName `
-        -KeyVaultName $KeyVaultName `
-        -ServicePrincipalApplicationId $ServicePrincipalApplicationId `
         -TenantId $TenantId `
         -SubscriptionId $SubscriptionId `
         -ResourceGroupName $ResourceGroupName `

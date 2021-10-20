@@ -9,21 +9,9 @@
     Azure Virtual Desktop host session pool, which enables the host to be used for
     Virtual Desktop users.
 
-    .PARAMETER CertName
-    This is the name of the cert that belongs to the service principal that connects
-    to azure.
-
-    .PARAMETER KeyVaultName
-    This is the name of the key vault that stores the service principal's certificate.
-
-    .PARAMETER ServicePrincipalApplicationId
-    This is the service principal id, which corresponds to an App Registration
-    in Azure Active Directory. There is a 1 to 1 correlation between an App
-    Registration and a Service Principal.
-
     .PARAMETER TenantId
     This is the Tenant id for the Azure Active Directory that the resources
-    such as the Virtual Machine, Service Principal, and Session Host Pool
+    such as the Virtual Machine, and Session Host Pool
     belong to.
 
     .PARAMETER SubscriptionId
@@ -56,8 +44,7 @@
     None.
 
     .EXAMPLE
-    PS> \azure_provisioning.ps1 -ServicePrincipalApplicationId $ServicePrincipalApplicationId `
-    >> -TenantId $TenantId `
+    PS> \azure_provisioning.ps1 -TenantId $TenantId `
     >> -SubscriptionId $SubscriptionId `
     >> -ResourceGroupName $ResourceGroupName `
     >> -HostPoolName $HostPoolName `
@@ -67,15 +54,6 @@
     >> -AzArchiveDownloadUrl $AzArchiveDownloadUrl
 #>
 param (
-    [Parameter(Mandatory = $true)]
-    [string]$CertName,
-
-    [Parameter(Mandatory = $true)]
-    [string]$KeyVaultName,
-
-    [Parameter(Mandatory = $true)]
-    [string]$ServicePrincipalApplicationId,
-
     [Parameter(Mandatory = $true)]
     [string]$TenantId,
 
@@ -188,24 +166,12 @@ function Invoke-HostRegistration
         .PARAMETER LogFile
         This function will log its operations to this file.
 
-        .PARAMETER CertName
-        This is the name of the cert that belongs to the service principal that connects
-        to azure.
-
-        .PARAMETER KeyVaultName
-        This is the name of the key vault that stores the service principal's certificate.
-
         .PARAMETER RegistrationScript
         This function executes this registration script with Powershell 7.
 
-        .PARAMETER ServicePrincipalApplicationId
-        This is the service principal id, which corresponds to an App Registration
-        in Azure Active Directory. There is a 1 to 1 correlation between an App
-        Registration and a Service Principal.
-
         .PARAMETER TenantId
         This is the Tenant id for the Azure Active Directory that the resources
-        such as the Virtual Machine, Service Principal, and Session Host Pool
+        such as the Virtual Machine, and Session Host Pool
         belong to.
 
         .PARAMETER SubscriptionId
@@ -238,16 +204,7 @@ function Invoke-HostRegistration
         [string] $LogFile,
 
         [Parameter(Mandatory = $true)]
-        [string] $CertName,
-
-        [Parameter(Mandatory = $true)]
-        [string] $KeyVaultName,
-
-        [Parameter(Mandatory = $true)]
         [string] $RegistrationScript,
-
-        [Parameter(Mandatory = $true)]
-        [string] $ServicePrincipalApplicationId,
 
         [Parameter(Mandatory = $true)]
         [string] $TenantId,
@@ -274,9 +231,9 @@ function Invoke-HostRegistration
     $PwshProcessInfo.RedirectStandardOutput = $true
     $PwshProcessInfo.UseShellExecute = $false
 
-    Write-EventToLog $LogFile "Info" "Invoke-HostRegistration" "Powershell 7 command: Start-Process C:\\Program Files\\PowerShell\\7\\pwsh.exe -ExecutionPolicy Unrestricted -exec bypass -File $RegistrationScript -CertName $CertName -AzArchiveDownloadUrl $AzArchiveDownloadUrl -DeployAgentDownloadUrl $DeployAgentDownloadUrl -KeyVaultName $KeyVaultName -ServicePrincipalApplicationId $ServicePrincipalApplicationId -TenantId $TenantId -SubscriptionId $SubscriptionId -ResourceGroupName $ResourceGroupName -HostPoolName $HostPoolName'"
+    Write-EventToLog $LogFile "Info" "Invoke-HostRegistration" "Powershell 7 command: Start-Process C:\\Program Files\\PowerShell\\7\\pwsh.exe -ExecutionPolicy Unrestricted -exec bypass -File $RegistrationScript -AzArchiveDownloadUrl $AzArchiveDownloadUrl -DeployAgentDownloadUrl $DeployAgentDownloadUrl -TenantId $TenantId -SubscriptionId $SubscriptionId -ResourceGroupName $ResourceGroupName -HostPoolName $HostPoolName"
 
-    $PwshProcessInfo.Arguments = "-ExecutionPolicy Unrestricted -exec bypass -File $RegistrationScript -CertName $CertName -AzArchiveDownloadUrl $AzArchiveDownloadUrl -DeployAgentDownloadUrl $DeployAgentDownloadUrl -KeyVaultName $KeyVaultName -ServicePrincipalApplicationId $ServicePrincipalApplicationId -TenantId $TenantId -SubscriptionId $SubscriptionId -ResourceGroupName $ResourceGroupName -HostPoolName $HostPoolName'"
+    $PwshProcessInfo.Arguments = "-ExecutionPolicy Unrestricted -exec bypass -File $RegistrationScript -AzArchiveDownloadUrl $AzArchiveDownloadUrl -DeployAgentDownloadUrl $DeployAgentDownloadUrl -TenantId $TenantId -SubscriptionId $SubscriptionId -ResourceGroupName $ResourceGroupName -HostPoolName $HostPoolName"
 
     $InstallationProcess = New-Object System.Diagnostics.Process
     $InstallationProcess.StartInfo = $PwshProcessInfo
@@ -360,22 +317,9 @@ function Register-Host
         Azure Virtual Desktop host session pool, which enables the host to be used for
         Virtual Desktop users.
 
-        .PARAMETER CertName
-        This is the name of the cert that belongs to the service principal that connects
-        to azure.
-
-        .PARAMETER KeyVaultName
-        This is the name of the key vault that stores the service principal's certificate.
-
-        .PARAMETER ServicePrincipalApplicationId
-        This is the service principal id, which corresponds to an App Registration
-        in Azure Active Directory. There is a 1 to 1 correlation between an App
-        Registration and a Service Principal.
-
         .PARAMETER TenantId
         This is the Tenant id for the Azure Active Directory that the resources
-        such as the Virtual Machine, Service Principal, and Session Host Pool
-        belong to.
+        such as the Virtual Machine, and Session Host Pool belong to.
 
         .PARAMETER SubscriptionId
         This is the Azure Subscription Id for all of the resources used in this
@@ -409,15 +353,6 @@ function Register-Host
     #>
 
     param (
-        [Parameter(Mandatory = $true)]
-        [string]$CertName,
-
-        [Parameter(Mandatory = $true)]
-        [string]$KeyVaultName,
-
-        [Parameter(Mandatory = $true)]
-        [string] $ServicePrincipalApplicationId,
-
         [Parameter(Mandatory = $true)]
         [string] $TenantId,
 
@@ -490,9 +425,6 @@ function Register-Host
 
         Invoke-HostRegistration -LogFile $LogFile `
             -RegistrationScript $RegistrationScriptPath `
-            -CertName $CertName `
-            -KeyVaultName $KeyVaultName `
-            -ServicePrincipalApplicationId $ServicePrincipalApplicationId `
             -TenantId $TenantId `
             -SubscriptionId $SubscriptionId `
             -ResourceGroupName $ResourceGroupName `
@@ -561,10 +493,7 @@ function Write-EventToLog
     $Stream.Close()
 }
 
-Register-Host -CertName $CertName `
-    -KeyVaultName $KeyVaultName `
-    -ServicePrincipalApplicationId $ServicePrincipalApplicationId `
-    -TenantId $TenantId `
+Register-Host -TenantId $TenantId `
     -SubscriptionId $SubscriptionId `
     -ResourceGroupName $ResourceGroupName `
     -HostPoolName $HostPoolName `
