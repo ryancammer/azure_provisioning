@@ -29,3 +29,10 @@ The azure_provisioning.ps1 and host_registration.ps1 scripts no longer require
 a cert, key vault, or service principal, as the Terraform provisioning code
 assigns the necessary roles to the Virtual Machine's identity, allowing it to
 get a registration token from an Azure Virtual Desktop Session Host.
+
+## [1.1.0] - 2021-11-03
+
+### Added
+
+The host_registration.ps1 script now enables 
+[FsLogix](https://docs.microsoft.com/en-us/fslogix/overview) roaming profiles.

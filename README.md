@@ -16,11 +16,12 @@ Token needs to be stored somewhere. This is all obviated by VMs generating a sho
 The azure_provisioning script downloads and installs Powershell 7, and then 
 downloads and executes the host_registration script. 
 
-The host_registration script downloads and updates the Az module, signs into 
+The host_registration script downloads and updates the Az module, signs in to 
 Azure, creates a new 
-[Registration Token](https://docs.microsoft.com/en-us/powershell/module/az.desktopvirtualization/new-azwvdregistrationinfo)
-, and then launches the Azure Virtual Desktop Agent and BootLoader installers, followed by the SxSSStack
-installer. These applications then work in conjunction to join the VM to the SHP.
+[Registration Token](https://docs.microsoft.com/en-us/powershell/module/az.desktopvirtualization/new-azwvdregistrationinfo), 
+and then launches the Azure Virtual Desktop Agent, BootLoader, and SxSSStack installers. 
+These applications then work in conjunction to join the VM to the SHP. Lastly, the script 
+enables [FsLogix](https://docs.microsoft.com/en-us/fslogix/overview) roaming profiles.
 
 # Resources
 - [Azure Virtual Desktop Agent Installer](https://query.prod.cms.rt.microsoft.com/cms/api/am/binary/RWrmXv)

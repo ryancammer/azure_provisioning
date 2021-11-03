@@ -429,10 +429,10 @@ function Invoke-DeployAgent
         token from a host pool, and then using that token to join the host pool.
 
         .PARAMETER LogFile
-        This function will log its operations to this file.
+        This function logs its operations to this file.
 
         .PARAMETER LogDirectory
-        This function will log its installation operations to this directory.
+        This function logs its installation operations to this directory.
 
         .PARAMETER AgentInstallerFolder
         This function uses executables in this folder for installing the
@@ -506,6 +506,7 @@ function Invoke-DeployAgent
         [bool]$rdshIs1809OrLater
 
     )
+
     try
     {
         $StartTime = Get-Date -Format yyyyMMddTHHmmss
@@ -607,7 +608,111 @@ function Invoke-DeployAgent
     catch
     {
         $StackTrace = $_.ScriptStackTrace
-        Write-EventToLog $LogFile "Error" "Register-SessionHost" "An error occurred. Error: $_. Stack trace: $StackTrace"
+        Write-EventToLog $LogFile "Error" "Invoke-DeployAgent" "An error occurred. Error: $_. Stack trace: $StackTrace"
+    }
+}
+
+function Set-FsLogixRegistryValues
+{
+    <#
+        .SYNOPSIS
+        Sets FsLogix registry settings, which enables roaming profiles.
+
+        .DESCRIPTION
+        FsLogix comes installed on the Windows VMs; however, the registry
+        values to enable roaming profiles are not set. This cmdlet sets them.
+
+        .PARAMETER LogFile
+        This function logs its operations to this file.
+
+        .INPUTS
+        None. You cannot pipe objects to Add-Extension.
+
+        .OUTPUTS
+        None.
+    #>
+
+    Param(
+        [Parameter(Mandatory = $true)]
+        [string] $LogFile
+    )
+
+    try
+    {
+        Set-Location HKLM:\SOFTWARE\
+
+        New-Item `
+            -Path HKLM:\SOFTWARE\FSLogix `
+            -Name Profiles `
+            -Value "" `
+            -Force
+
+        New-Item `
+            -Path HKLM:\Software\FSLogix\Profiles\ `
+            -Name Apps `
+            -Force
+
+        Set-ItemProperty `
+            -Path HKLM:\Software\FSLogix\Profiles `
+            -Name "Enabled" `
+            -Type "Dword" `
+            -Value "1"
+
+        New-ItemProperty `
+            -Path HKLM:\Software\FSLogix\Profiles `
+            -Name "CCDLocations" `
+            -Value "type=smb,connectionString=$ProfilePath" `
+            -PropertyType MultiString `
+            -Force
+
+        Set-ItemProperty `
+            -Path HKLM:\Software\FSLogix\Profiles `
+            -Name "SizeInMBs" `
+            -Type "Dword" `
+            -Value "30000"
+
+        Set-ItemProperty `
+            -Path HKLM:\Software\FSLogix\Profiles `
+            -Name "IsDynamic" `
+            -Type "Dword" `
+            -Value "1"
+
+        Set-ItemProperty `
+            -Path HKLM:\Software\FSLogix\Profiles `
+            -Name "VolumeType" `
+            -Type String `
+            -Value "vhdx"
+
+        Set-ItemProperty `
+            -Path HKLM:\Software\FSLogix\Profiles `
+            -Name "FlipFlopProfileDirectoryName" `
+            -Type "Dword" `
+            -Value "1"
+
+        Set-ItemProperty `
+            -Path HKLM:\Software\FSLogix\Profiles `
+            -Name "SIDDirNamePattern" `
+            -Type String `
+            -Value "%username%%sid%"
+
+        Set-ItemProperty `
+            -Path HKLM:\Software\FSLogix\Profiles `
+            -Name "SIDDirNameMatch" `
+            -Type String `
+            -Value "%username%%sid%"
+
+        Set-ItemProperty `
+            -Path HKLM:\Software\FSLogix\Profiles `
+            -Name DeleteLocalProfileWhenVHDShouldApply `
+            -Type DWord `
+            -Value 1
+
+        Pop-Location
+    }
+    catch
+    {
+        $StackTrace = $_.ScriptStackTrace
+        Write-EventToLog $LogFile "Error" "Set-FsLogixRegistryValues" "An error occurred. Error: $_. Stack trace: $StackTrace"
     }
 }
 
@@ -715,6 +820,8 @@ try
         -RegistrationToken $RegistrationToken `
         -StartAgent $true `
         -rdshIs1809OrLater $true
+
+    Set-FsLogixRegistryValues -LogFile $LogFile
 }
 catch
 {
