@@ -36,3 +36,11 @@ get a registration token from an Azure Virtual Desktop Session Host.
 
 The host_registration.ps1 script now enables 
 [FsLogix](https://docs.microsoft.com/en-us/fslogix/overview) roaming profiles.
+
+## [1.2.0] - 2022-01-31
+
+### Added
+
+The `azure_provisioning.ps1` script now contains a switch, `-InstallDuo`, that
+will attempt to install [Duo](https://duo.com/). It requires that all subsequent
+parameters be assigned.
