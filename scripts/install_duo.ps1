@@ -169,10 +169,10 @@ function Install-Duo
 
         Write-EventToLog $LogFile "Info" "Install-Duo" "Duo secrets fetched. Proceeding with installation."
 
-        $DuoFileName = ([uri]$DuoInstallerDownloadUrl).Segments[-1]
+        $DuoFileName = ([uri]$DuoInstallerArchiveDownloadUrl).Segments[-1]
         $DuoDownloadPath = "$TempFolder\\$DuoFileName"
 
-        Invoke-FileDownload $LogFile $DuoInstallerDownloadUrl $DuoDownloadPath
+        Invoke-FileDownload $LogFile $DuoInstallerArchiveDownloadUrl $DuoDownloadPath
 
         Write-EventToLog $LogFile "Info" "Install-Duo" "Duo downloaded. Expanding archive..."
 
@@ -239,7 +239,7 @@ function Invoke-DuoInstaller
     .PARAMETER SecretKey
     This is the secret key that identifies the customer.
 
-    .PARAMETER DuoInstallerDownloadUrl
+    .PARAMETER DuoInstallerPath
     This is the path to the Duo installer.
 
     .INPUTS
@@ -271,7 +271,7 @@ function Invoke-DuoInstaller
         [Parameter(Mandatory = $true)]
         [string]$SecretKey
     )
-    $InstallCommand = "/i c:\\temp\\DuoWindowsLogon64.msi /qn IKEY=`"$IntegrationKey`" SKEY=`"$SecretKey`" HOST=`"$APIHostName`" AUTOPUSH=`"#1`" FAILOPEN=`"#1`" SMARTCARD=`"#0`" RDPONLY=`"#0`""
+    $InstallCommand = "/i $DuoInstallerPath /qn IKEY=`"$IntegrationKey`" SKEY=`"$SecretKey`" HOST=`"$APIHostName`" AUTOPUSH=`"#1`" FAILOPEN=`"#1`" SMARTCARD=`"#0`" RDPONLY=`"#0`""
 
     Write-EventToLog $LogFile "Info" "Invoke-DuoInstaller" "Invoking Duo installer using msiexec."
 

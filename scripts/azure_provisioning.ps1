@@ -34,9 +34,6 @@
     This script downloads the deployment agent that installs the executables
     that join the host to the session host pool.
 
-    .PARAMETER AzArchiveDownloadUrl
-    This script downloads the Az cmdlets archive file from this url.
-
     .PARAMETER InstallDuo
     If set, this script will install duo, and all of the following parameters
     are required.
@@ -76,8 +73,7 @@
     >> -HostPoolName $HostPoolName `
     >> -RegistrationScriptName $RegistrationScriptName `
     >> -RegistrationScriptDownloadUrl $RegistrationScriptDownloadUrl `
-    >> -DeployAgentDownloadUrl $DeployAgentDownloadUrl `
-    >> -AzArchiveDownloadUrl $AzArchiveDownloadUrl
+    >> -DeployAgentDownloadUrl $DeployAgentDownloadUrl
 #>
 param (
     [Parameter(Mandatory = $true)]
@@ -100,9 +96,6 @@ param (
 
     [Parameter(Mandatory = $true)]
     [string]$DeployAgentDownloadUrl,
-
-    [Parameter(Mandatory = $true)]
-    [string] $AzArchiveDownloadUrl,
 
     [Parameter(Mandatory = $false)]
     [switch] $InstallDuo,
@@ -204,8 +197,7 @@ function Invoke-DuoInstallationScript
         >> -HostPoolName $HostPoolName `
         >> -RegistrationScriptName $RegistrationScriptName `
         >> -RegistrationScriptDownloadUrl $RegistrationScriptDownloadUrl `
-        >> -DeployAgentDownloadUrl $DeployAgentDownloadUrl `
-        >> -AzArchiveDownloadUrl $AzArchiveDownloadUrl
+        >> -DeployAgentDownloadUrl $DeployAgentDownloadUrl
     #>
     param (
         [Parameter(Mandatory = $true)]
@@ -330,9 +322,6 @@ function Invoke-HostRegistration
         .PARAMETER DeployAgentDownloadUrl
         This is the url the script will download the deploy agent from.
 
-        .PARAMETER $AzArchiveDownloadUrl
-        This function downloads the Az cmdlets archive file from this url.
-
         .INPUTS
         None. You cannot pipe objects to Add-Extension.
 
@@ -361,10 +350,7 @@ function Invoke-HostRegistration
         [string] $HostPoolName,
 
         [Parameter(Mandatory = $true)]
-        [string] $DeployAgentDownloadUrl,
-
-        [Parameter(Mandatory = $true)]
-        [string] $AzArchiveDownloadUrl
+        [string] $DeployAgentDownloadUrl
     )
 
     $PwshProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
@@ -373,9 +359,9 @@ function Invoke-HostRegistration
     $PwshProcessInfo.RedirectStandardOutput = $true
     $PwshProcessInfo.UseShellExecute = $false
 
-    Write-EventToLog $LogFile "Info" "Invoke-HostRegistration" "Powershell 7 command: Start-Process C:\\Program Files\\PowerShell\\7\\pwsh.exe -ExecutionPolicy Unrestricted -exec bypass -File $RegistrationScript -AzArchiveDownloadUrl $AzArchiveDownloadUrl -DeployAgentDownloadUrl $DeployAgentDownloadUrl -TenantId $TenantId -SubscriptionId $SubscriptionId -ResourceGroupName $ResourceGroupName -HostPoolName $HostPoolName"
+    Write-EventToLog $LogFile "Info" "Invoke-HostRegistration" "Powershell 7 command: Start-Process C:\\Program Files\\PowerShell\\7\\pwsh.exe -ExecutionPolicy Unrestricted -exec bypass -File $RegistrationScript -DeployAgentDownloadUrl $DeployAgentDownloadUrl -TenantId $TenantId -SubscriptionId $SubscriptionId -ResourceGroupName $ResourceGroupName -HostPoolName $HostPoolName"
 
-    $PwshProcessInfo.Arguments = "-ExecutionPolicy Unrestricted -exec bypass -File $RegistrationScript -AzArchiveDownloadUrl $AzArchiveDownloadUrl -DeployAgentDownloadUrl $DeployAgentDownloadUrl -TenantId $TenantId -SubscriptionId $SubscriptionId -ResourceGroupName $ResourceGroupName -HostPoolName $HostPoolName"
+    $PwshProcessInfo.Arguments = "-ExecutionPolicy Unrestricted -exec bypass -File $RegistrationScript -DeployAgentDownloadUrl $DeployAgentDownloadUrl -TenantId $TenantId -SubscriptionId $SubscriptionId -ResourceGroupName $ResourceGroupName -HostPoolName $HostPoolName"
 
     $InstallationProcess = New-Object System.Diagnostics.Process
     $InstallationProcess.StartInfo = $PwshProcessInfo
@@ -491,9 +477,6 @@ function Register-Host
         This script downloads the deployment agent that installs the executables
         that join the host to the session host pool.
 
-        .PARAMETER $AzArchiveDownloadUrl
-        This function downloads the Az cmdlets archive file from this url.
-
         .INPUTS
         None. You cannot pipe objects to Add-Extension.
 
@@ -527,10 +510,7 @@ function Register-Host
         [string] $RegistrationScriptDownloadUrl,
 
         [Parameter(Mandatory = $true)]
-        [string] $DeployAgentDownloadUrl,
-
-        [Parameter(Mandatory = $true)]
-        [string] $AzArchiveDownloadUrl
+        [string] $DeployAgentDownloadUrl
     )
 
     $PowershellVersion = "7.2.1"
@@ -574,8 +554,7 @@ function Register-Host
             -SubscriptionId $SubscriptionId `
             -ResourceGroupName $ResourceGroupName `
             -HostPoolName $HostPoolName `
-            -DeployAgentDownloadUrl $DeployAgentDownloadUrl `
-            -AzArchiveDownloadUrl $AzArchiveDownloadUrl
+            -DeployAgentDownloadUrl $DeployAgentDownloadUrl
 
     Write-EventToLog $LogFile "Info" "Register-Host" "Registration script execution complete."
 }
@@ -632,15 +611,18 @@ function Write-EventToLog
     $Stream.Close()
 }
 
+$TempFolder = "C:\\temp"
+$LogFile = "$TempFolder\\azure_provisioning-$StartTime" + ".log"
+
 try
 {
     $StartTime = Get-Date -Format yyyyMMddTHHmmss
 
     Initialize-TempFolder $TempFolder
 
-    $LogFile = "$TempFolder\\azure_provisioning-$StartTime" + ".log"
-
     Write-EventToLog $LogFile "Info" "Main" "Temp folder initialized."
+
+    Write-EventToLog $LogFile "Info" "Main" "Launching host registration..."
 
     Register-Host -LogFile $LogFile `
     -TempFolder $TempFolder `
@@ -650,24 +632,34 @@ try
     -HostPoolName $HostPoolName `
     -RegistrationScriptName $RegistrationScriptName `
     -RegistrationScriptDownloadUrl $RegistrationScriptDownloadUrl `
-    -DeployAgentDownloadUrl $DeployAgentDownloadUrl `
-    -AzArchiveDownloadUrl $AzArchiveDownloadUrl
+    -DeployAgentDownloadUrl $DeployAgentDownloadUrl
+
+    Write-EventToLog $LogFile "Info" "Main" "Host has been registered."
 
     if ($InstallDuo -eq $true)
     {
+        Write-EventToLog $LogFile "Info" "Main" "Duo installation was selected."
+
         $DuoInstallerScriptFileName = ([uri]$DuoInstallerScriptDownloadUrl).Segments[-1]
         $DuoInstallerScriptDownloadPath = "$TempFolder\\$DuoInstallerScriptFileName"
 
         Invoke-FileDownload $LogFile $DuoInstallerScriptDownloadUrl $DuoInstallerScriptDownloadPath
 
-        Write-EventToLog $LogFile "Info" "Main" "Launching Duo installation script."
+        Write-EventToLog $LogFile "Info" "Main" "Launching Duo installation script..."
 
         Invoke-DuoInstallationScript -LogFile $LogFile `
             -DuoInstallerScriptPath $DuoInstallerScriptDownloadPath `
             -DuoInstallerArchiveDownloadUrl $DuoInstallerArchiveDownloadUrl `
             -APIHostNameKeyName $APIHostNameKeyName `
             -IntegrationKeyName $IntegrationKeyName `
+            -KeyVaultName $KeyVaultName `
             -SecretKeyName $SecretKeyName
+
+        Write-EventToLog $LogFile "Info" "Main" "Duo installation script finished."
+    }
+    else
+    {
+        Write-EventToLog $LogFile "Info" "Main" "Duo installation was not selected."
     }
 }
 catch

@@ -26,9 +26,6 @@
     .PARAMETER DeployAgentDownloadUrl
     This script will download the DeployAgent archive from this url.
 
-    .PARAMETER $AzArchiveDownloadUrl
-    This function downloads the Az cmdlets archive file from this url.
-
     .PARAMETER ReRegisterHost
     This switch will cause the VM to be re-registered, even if it has been
     previously registered. If the switch is present, the Registry key
@@ -49,7 +46,6 @@
     >> -ResourceGroupName $ResourceGroupName `
     >> -HostPoolName $HostPoolName `
     >> -DeployAgentDownloadUrl $DeployAgentDownloadUrl `
-    >> -AzArchiveDownloadUrl $AzArchiveDownloadUrl `
     >> -ReRegisterHost
 #>
 
@@ -68,9 +64,6 @@ param(
 
     [Parameter(Mandatory = $true)]
     [string] $DeployAgentDownloadUrl,
-
-    [Parameter(Mandatory = $true)]
-    [string] $AzArchiveDownloadUrl,
 
     [Parameter(Mandatory = $false)]
     [switch] $ReRegisterHost
@@ -128,7 +121,6 @@ function Get-RegistrationToken
         >> -ReRegisterHost
     #>
 
-    [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory = $true)]
         [string] $LogFile,
@@ -337,84 +329,6 @@ function Initialize-TempFolder
     {
         New-Item -Path $TempFolder -ItemType directory
     }
-}
-
-function Install-AzModule
-{
-    <#
-        .SYNOPSIS
-        Installs the Az module.
-
-        .DESCRIPTION
-        The Az module contains all of the functionality needed by
-        this script. This function installs the Az module.
-
-        .PARAMETER LogFile
-        This function logs its operations to this file.
-
-        .PARAMETER $AzArchiveDownloadUrl
-        This function downloads the Az cmdlets archive file from this url.
-
-        .PARAMETER $AzArchiveDownloadPath
-        This function downloads the Az cmdlets archive file to this path.
-
-        .PARAMETER $AzArchiveDirectory
-        This function will expand the Az cmdlets archive to this directory.
-
-        .INPUTS
-        None. You cannot pipe objects to Add-Extension.
-
-        .OUTPUTS
-        None.
-    #>
-
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory = $true)]
-        [string] $LogFile,
-
-        [Parameter(Mandatory = $true)]
-        [string] $AzArchiveDownloadUrl,
-
-        [Parameter(Mandatory = $true)]
-        [string] $AzArchiveDownloadPath,
-
-        [Parameter(Mandatory = $true)]
-        [string] $AzArchiveDirectory
-    )
-
-    Write-EventToLog $LogFile "Info" "Install-AzModule" "Download Az module:"
-
-    Get-ArchiveAndUnzip -LogFile $LogFile `
-    -DownloadUrl $AzArchiveDownloadUrl `
-    -DownloadPath $AzArchiveDownloadPath `
-    -ExpandedArchiveDirectory $AzArchiveDirectory
-
-    $PwshProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
-    $PwshProcessInfo.FileName = "C:\\Program Files\\PowerShell\\7\\pwsh.exe"
-    $PwshProcessInfo.RedirectStandardError = $true
-    $PwshProcessInfo.RedirectStandardOutput = $true
-    $PwshProcessInfo.UseShellExecute = $false
-
-    $AzInstallScript = "$AzArchiveDirectory\\InstallModule.ps1"
-
-    Write-EventToLog $LogFile "Info" "Install-AzModule" "Install-AzModule command: Start-Process C:\\Program Files\\PowerShell\\7\\pwsh.exe -ExecutionPolicy Unrestricted -exec bypass -File $AzInstallScript"
-
-    $PwshProcessInfo.Arguments = "-ExecutionPolicy Unrestricted -exec bypass -File $AzInstallScript"
-
-    $InstallationProcess = New-Object System.Diagnostics.Process
-    $InstallationProcess.StartInfo = $PwshProcessInfo
-    Write-EventToLog $LogFile "Info" "Install-AzModule" "Starting the pwsh process now on script $AzInstallScript"
-    $InstallationProcess.Start() | Out-Null
-    $InstallationProcess.WaitForExit()
-
-    $stdout = $InstallationProcess.StandardOutput.ReadToEnd()
-    $stderr = $InstallationProcess.StandardError.ReadToEnd()
-
-    Write-EventToLog $LogFile "Info" "Invoke-HostRegistration" "stdout: $stdout"
-    Write-EventToLog $LogFile "Error" "Invoke-HostRegistration" "stderr: $stderr"
-
-    Write-EventToLog $LogFile "Info" "Install-AzModule" "Az module installed."
 }
 
 function Invoke-DeployAgent
@@ -786,17 +700,11 @@ try
 
     Invoke-RegistryProvisioning -LogFile $LogFile -ReRegisterHost $ReRegisterHost.ToBool()
 
-    $AzArchiveName = Split-Path $AzArchiveDownloadUrl -leaf
-    $AzArchiveName = $AzArchiveName.Replace("?raw=true", "")
-    $AzArchiveDirectoryName = $AzArchiveName.Replace(".zip", "")
-
-    $AzArchiveDownloadPath = "$TempFolder\\$AzArchiveName"
-    $AzArchiveDirectory = "$TempFolder\\$AzArchiveDirectoryName"
-
-    Install-AzModule -LogFile $LogFile `
-        -AzArchiveDownloadUrl $AzArchiveDownloadUrl `
-        -AzArchiveDownloadPath $AzArchiveDownloadPath `
-        -AzArchiveDirectory $AzArchiveDirectory
+    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -ForceBootstrap
+    Install-Module -Name Az.Accounts -Scope AllUsers -Force
+    Install-Module -Name Az.KeyVault -Scope AllUsers -Force
+    Install-Module -Name Az.Storage -Scope AllUsers -Force
+    Install-Module -Name PSDesiredStateConfiguration -AllowPrerelease -Scope AllUsers -Force
 
     Get-ArchiveAndUnzip -LogFile $LogFile `
         -DownloadUrl $DeployAgentDownloadUrl `
