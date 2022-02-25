@@ -60,6 +60,9 @@
     This is the name of the key vault that the script will fetch
     secrets from.
 
+    .PARAMETER UpdateWindows
+    If set, this script will update Windows and reboot if necessary.
+
     .INPUTS
     None. You cannot pipe objects to Add-Extension.
 
@@ -116,7 +119,10 @@ param (
     [string]$DuoInstallerArchiveDownloadUrl,
 
     [Parameter(Mandatory = $false)]
-    [string]$KeyVaultName
+    [string]$KeyVaultName,
+
+    [Parameter(Mandatory = $false)]
+    [switch] $UpdateWindows
 )
 
 function Initialize-TempFolder
@@ -660,6 +666,31 @@ try
     else
     {
         Write-EventToLog $LogFile "Info" "Main" "Duo installation was not selected."
+    }
+
+    if ($UpdateWindows -eq $true)
+    {
+        Write-EventToLog $LogFile "Info" "Main" "Windows Update selected."
+
+        Write-EventToLog $LogFile "Info" "Main" "Installing PSWindowsUpdate module..."
+        Install-Module PSWindowsUpdate -Scope AllUsers -Force
+        Write-EventToLog $LogFile "Info" "Main" "PSWindowsUpdate installed."
+
+        Write-EventToLog $LogFile "Info" "Main" "Executing Get-WindowsUpdate..."
+        Get-WindowsUpdate
+        Write-EventToLog $LogFile "Info" "Main" "Get-WindowsUpdate executed."
+
+        Write-EventToLog $LogFile "Info" "Main" "Adding MicrosoftUpdate using Add-WUServiceManager..."
+        Add-WUServiceManager -MicrosoftUpdate
+        Write-EventToLog $LogFile "Info" "Main" "MicrosoftUpdate added using Add-WUServiceManager."
+
+        Write-EventToLog $LogFile "Info" "Main" "Installing Windows updates..."
+        Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -AutoReboot
+        Write-EventToLog $LogFile "Info" "Main" "Windows updates installed."
+    }
+    else
+    {
+        Write-EventToLog $LogFile "Info" "Main" "Windows Update was not selected."
     }
 }
 catch

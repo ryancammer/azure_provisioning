@@ -42,7 +42,7 @@ The host_registration.ps1 script now enables
 ### Added
 
 The `azure_provisioning.ps1` script now contains a switch, `-InstallDuo`, that
-will attempt to install [Duo](https://duo.com/). It requires that all subsequent
+will install [Duo](https://duo.com/). It requires that all subsequent
 parameters be assigned.
 
 ## [1.3.0] - 2022-02-25
@@ -54,3 +54,10 @@ module, but instead installs the `Az.Accounts`, `Az.KeyVault`, `Az.Storage`, and
 `PSDesiredStateConfiguration` modules. Consequently, the `AzArchiveDownloadUrl`
 parameter has been removed from the `azure_provisioning.ps1` and 
 `host_registration.ps1` scripts.
+
+## [1.4.0] - 2022-02-25
+
+### Added
+
+The `azure_provisioning.ps1` script now contains a switch, `-UpdateWindows`, that
+will update Windows and reboot the VM if necessary.
