@@ -617,12 +617,44 @@ function Write-EventToLog
     $Stream.Close()
 }
 
+Configuration TestConfiguration
+{
+    Import-DscResource -ModuleName 'PSDesiredStateConfiguration'
+
+    Node 'localhost'
+    {
+        File CreateConfigDirectory
+        {
+            DestinationPath = "c:\vdiconfig"
+            Ensure          = "Present"
+            Type            = "Directory"
+        }
+    }
+}
+
+function Invoke-DSCInstallation {
+    $StartTime = Get-Date -Format yyyyMMddTHHmmss
+    $LogFile = "$TempFolder\\dsc_installation-$StartTime" + ".log"
+
+    try
+    {
+        $outputPath = $env:TEMP
+        TestConfiguration -OutputPath $outputPath | Out-Null
+        Start-DscConfiguration -Wait -Verbose -Path $outputPath -ErrorAction Stop
+
+        Write-EventToLog $LogFile "Info" "TestConfiguration" "Success"
+    } catch {
+        Write-EventToLog $LogFile "Error" "TestConfiguration" "An error occurred. Error: $_. Stack trace: $StackTrace"
+    }
+}
+
 $TempFolder = "C:\\temp"
+$StartTime = Get-Date -Format yyyyMMddTHHmmss
 $LogFile = "$TempFolder\\azure_provisioning-$StartTime" + ".log"
 
 try
 {
-    $StartTime = Get-Date -Format yyyyMMddTHHmmss
+
 
     Initialize-TempFolder $TempFolder
 
@@ -692,6 +724,8 @@ try
     {
         Write-EventToLog $LogFile "Info" "Main" "Windows Update was not selected."
     }
+
+    Invoke-DSCInstallation
 }
 catch
 {
