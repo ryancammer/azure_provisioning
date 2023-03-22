@@ -1,0 +1,19 @@
+---
+azure_ad_group_name: "Virtual-Desktop-Users-Development"
+azure_provisioning_script_download_url: "https://github.com/ryancammer/azure_provisioning/blob/main/scripts/azure_provisioning.ps1?raw=true"
+deploy_agent_download_url: "https://github.com/ryancammer/azure_provisioning/blob/main/DeployAgent.zip?raw=true"
+duo_installer_archive_download_url: "https://dl.duosecurity.com/DuoWinLogon_MSIs_Policies_and_Documentation-latest.zip"
+duo_installer_script_download_url: "https://github.com/ryancammer/azure_provisioning/blob/main/scripts/install_duo.ps1?raw=true"
+registration_script_name: "host_registration.ps1"
+registration_script_download_url: "https://github.com/ryancammer/azure_provisioning/blob/main/scripts/host_registration.ps1?raw=true"
+vm_count: 1
+vm_identity: "SystemAssigned"
+vm_offer: "office-365"
+vm_os_disk_caching: "ReadWrite"
+vm_os_disk_storage_account_type: "Standard_LRS"
+vm_publisher: "MicrosoftWindowsDesktop"
+vm_size: "Standard_D2ds_v5"
+vm_sku: "win11-21h2-avd-m365"
+vm_version: "latest"
+
+

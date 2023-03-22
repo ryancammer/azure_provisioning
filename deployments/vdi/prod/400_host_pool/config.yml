@@ -1,0 +1,4 @@
+---
+custom_rdp_properties: "audiocapturemode:i:1;audiomode:i:0;camerastoredirect:s:*;redirectsmartcards:i:1;targetisaadjoined:i:1;usbdevicestoredirect:s:*"
+load_balancer_type: "BreadthFirst"
+maximum_sessions_allowed: 8

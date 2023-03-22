@@ -1,0 +1,43 @@
+= aws_tfstate_backend
+
+Creates a terraform state store inside of an S3 bucket. Useful for the
+initial bootstrap.
+
+== Provenance
+
+Vendored and heavily trimmed from
+https://github.com/cloudposse/terraform-aws-tfstate-backend.
+
+== Usage
+
+[arabic]
+. Follow instructions in
+link:../targets/prod/bootstrap/README.md[targets/prod/bootstrap].
+
+== Inputs
+
+[width="100%",cols="18%,33%,^15%,^17%,^17%",options="header",]
+|===
+|Name |Description |Type |Default |Required
+|name |Solution name, e.g. `app' or `jenkins' |string |`terraform` |no
+
+|region |AWS Region the S3 bucket should reside in |string |- |yes
+
+|stage |Stage, e.g. `prod', `staging', `dev', OR `source', `build',
+`test', `deploy', `release' |string
+|``| no | | read_capacity | DynamoDB read capacity units | string |`5`| no | | write_capacity | DynamoDB write capacity units | string |`5`
+|no
+|===
+
+== Outputs
+
+[cols=",",options="header",]
+|===
+|Name |Description
+|dynamodb_table_arn |DynamoDB table ARN
+|dynamodb_table_id |DynamoDB table ID
+|dynamodb_table_name |DynamoDB table name
+|s3_bucket_arn |S3 bucket ARN
+|s3_bucket_domain_name |S3 bucket domain name
+|s3_bucket_id |S3 bucket ID
+|===

@@ -1,0 +1,6 @@
+---
+azure_ad_key_vault_users_group_name: "KeyVault-Admin-Users-Prod"
+fslogix_file_share_directory_name: "fslogixprod"
+fslogix_file_share_permissions: "rwdl"
+fslogix_file_share_quota: 100
+storage_account_name: "storagedprod"
